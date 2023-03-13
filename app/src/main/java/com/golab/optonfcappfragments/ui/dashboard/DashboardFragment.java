@@ -67,6 +67,7 @@ public class DashboardFragment extends Fragment {
                 v.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
                 mCounter = 30;
                 ((MainActivity) getActivity()).setWriteMode(true);
+                ((MainActivity) getActivity()).setMessage(mWriteText.getText().toString());
                 mCountView.setText(String.valueOf(mCounter));
                 mCountView.setVisibility(View.VISIBLE);
                 mCDTimer = new CountDownTimer(30000, 1000){
@@ -110,6 +111,7 @@ public class DashboardFragment extends Fragment {
 
     public void stopWrite() {
         mCDTimer.cancel();
+        ((MainActivity) getActivity()).setWriteMode(false);
         mCountView.setVisibility(View.GONE);
     }
 

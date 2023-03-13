@@ -7,4 +7,5 @@ public class NfcBroadcasts {
     public static final String NFC_TAG_READ = "nfc.tag.read";
 
     public static final String NFC_STOP_WRITE = "nfc.tag.stop.write";
+    public static final String NFC_TAG_WRITE = "nfc.tag.write";
 }

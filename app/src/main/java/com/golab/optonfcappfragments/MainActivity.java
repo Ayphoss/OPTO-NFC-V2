@@ -54,6 +54,8 @@ public class MainActivity extends AppCompatActivity {
     private Fragment mDashboardFragment;
     private Fragment mHomeFragment;
 
+    private String message;
+
     // TODO: Replace with proper format
     private StringBuilder mReadString = null;
 
@@ -77,6 +79,8 @@ public class MainActivity extends AppCompatActivity {
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
         NavigationUI.setupWithNavController(binding.navView, navController);
+
+        mIsWriteMode = false;
 
         mBroadcastReceiver = new NfcBroadcastReceiver();
 
@@ -119,9 +123,8 @@ public class MainActivity extends AppCompatActivity {
             // Get the tag
             mTag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
 
-            // TODO: Handle for when the current fragment is in write mode but not yet writing
             if (mIsWriteMode) {
-//                mDashboardFragment.handleNfcTag(intent);
+                handleWriteIntent(intent);
             } else {
                 handleReadIntent(intent);
                 sendBroadcast(new Intent(NfcBroadcasts.NFC_TAG_READ));
@@ -336,9 +339,9 @@ public class MainActivity extends AppCompatActivity {
 
     private NdefMessage packageMessage() throws UnsupportedEncodingException {
 
-        // TODO: Fix info pass for write
+        // TODO: Adjust for full payload package
         // Casting to string since TextView.getText() returns CharSequence
-        NdefRecord[] records = { createRecord((String) "STUB") };
+        NdefRecord[] records = { createRecord((String) this.message) };
         return new NdefMessage(records);
     }
 
@@ -384,5 +387,9 @@ public class MainActivity extends AppCompatActivity {
 
     public void setWriteMode(boolean b) {
         this.mIsWriteMode = b;
+    }
+
+    public void setMessage(String s) {
+        this.message = s;
     }
 }
