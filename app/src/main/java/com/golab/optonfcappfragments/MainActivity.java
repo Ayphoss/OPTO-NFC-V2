@@ -24,6 +24,7 @@ import com.golab.optonfcappfragments.utils.NdefMessageParser;
 import com.golab.optonfcappfragments.utils.NfcBroadcastReceiver;
 import com.golab.optonfcappfragments.utils.NfcBroadcasts;
 import com.golab.optonfcappfragments.utils.ParsedNefRecord;
+import com.golab.optonfcappfragments.utils.Utils;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -36,7 +37,9 @@ import com.golab.optonfcappfragments.databinding.ActivityMainBinding;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 import java.util.List;
+
 
 public class MainActivity extends AppCompatActivity {
 
@@ -55,6 +58,8 @@ public class MainActivity extends AppCompatActivity {
     private Fragment mHomeFragment;
 
     private String message;
+
+    private final byte WRITE_BYTE = 0;
 
     // TODO: Replace with proper format
     private StringBuilder mReadString = null;
@@ -341,24 +346,43 @@ public class MainActivity extends AppCompatActivity {
 
         // TODO: Adjust for full payload package
         // Casting to string since TextView.getText() returns CharSequence
-        NdefRecord[] records = { createRecord((String) this.message) };
+
+        byte[] pyld = formatMessage(this.message);
+
+        NdefRecord[] records = { createRecord(pyld) };
         return new NdefMessage(records);
     }
 
-    private NdefRecord createRecord(String text) throws UnsupportedEncodingException {
-        String  lang        =   "en";
-        byte[]  textBytes   =   text.getBytes();
-        byte[]  langBytes   =   lang.getBytes();
-        int     langLength  =   langBytes.length;
-        int     textLength  =   textBytes.length;
-        byte[]  payload     =   new byte[1 + langLength + textLength];
+    private byte[] formatMessage(String msg) throws UnsupportedEncodingException {
 
-        payload[0] = (byte) langLength;
+        if (msg.length() == 6) {
+            byte[] out = new byte[4];
 
-        System.arraycopy(langBytes, 0, payload, 1, langLength);
-        System.arraycopy(textBytes, 0, payload, 1 + langLength, textLength);
+            out[0] = WRITE_BYTE;
+            out[1] = Byte.parseByte(msg.substring(0,2));
+            out[2] = Byte.parseByte(msg.substring(2,4));
+            out[3] = Byte.parseByte(msg.substring(4,6));
 
-        NdefRecord record = new NdefRecord(NdefRecord.TNF_WELL_KNOWN, NdefRecord.RTD_TEXT, new byte[0], payload);
+            return out;
+        } else {
+            throw new UnsupportedEncodingException();
+        }
+    }
+
+    private NdefRecord createRecord(byte[] pyld) throws UnsupportedEncodingException {
+//        String  lang        =   "en";
+//        byte[]  pyldBytes   =   pyld;
+//        byte[]  langBytes   =   lang.getBytes();
+//        int     langLength  =   langBytes.length;
+//        int     textLength  =   pyldBytes.length;
+//        byte[]  payload     =   new byte[1 + langLength + textLength];
+//
+//        payload[0] = (byte) langLength;
+//
+//        System.arraycopy(langBytes, 0, payload, 1, langLength);
+//        System.arraycopy(pyldBytes, 0, payload, 1 + langLength, textLength);
+
+        NdefRecord record = NdefRecord.createMime("text/plain", pyld);
 
         return record;
     }
