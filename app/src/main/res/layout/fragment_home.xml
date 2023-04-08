@@ -10,14 +10,148 @@
         android:id="@+id/readText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="8dp"
+        android:layout_marginTop="40dp"
         android:text="Tap tag to read"
         android:textAlignment="center"
         android:textSize="20sp"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@+id/parametersConstraint" />
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/parametersConstraint"
+        android:layout_width="407dp"
+        android:layout_height="273dp"
+        android:layout_marginTop="112dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <EditText
+            android:id="@+id/dutyCycleRead"
+            android:layout_width="85dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:background="@null"
+            android:ems="10"
+            android:inputType="textPersonName"
+            android:singleLine="true"
+            android:text="@string/duty"
+            android:textAlignment="viewEnd"
+            android:focusable="false"
+            android:clickable="false"
+            android:cursorVisible="false"
+            app:layout_constraintStart_toStartOf="@+id/divider11"
+            app:layout_constraintTop_toBottomOf="@+id/divider11" />
+
+        <TextView
+            android:id="@+id/frequencyText"
+            android:layout_width="45dp"
+            android:layout_height="45dp"
+            android:layout_marginTop="20dp"
+            android:gravity="center"
+            android:text="00"
+            android:focusable="false"
+            android:clickable="false"
+            android:cursorVisible="false"
+            android:textAppearance="@style/TextAppearance.AppCompat.Large"
+            app:layout_constraintEnd_toEndOf="@+id/divider10"
+            app:layout_constraintTop_toBottomOf="@+id/divider10" />
+
+        <View
+            android:id="@+id/divider12"
+            android:layout_width="350dp"
+            android:layout_height="1dp"
+            android:layout_marginTop="80dp"
+            android:background="?android:attr/listDivider"
+            app:layout_constraintStart_toStartOf="@+id/divider11"
+            app:layout_constraintTop_toBottomOf="@+id/divider11" />
+
+        <View
+            android:id="@+id/divider10"
+            android:layout_width="350dp"
+            android:layout_height="1dp"
+            android:layout_marginTop="80dp"
+            android:background="?android:attr/listDivider"
+            app:layout_constraintStart_toStartOf="@+id/divider9"
+            app:layout_constraintTop_toBottomOf="@+id/divider9" />
+
+        <View
+            android:id="@+id/divider9"
+            android:layout_width="350dp"
+            android:layout_height="1dp"
+            android:layout_marginStart="30dp"
+            android:background="?android:attr/listDivider"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/intensityText"
+            android:layout_width="45dp"
+            android:layout_height="45dp"
+            android:layout_marginTop="20dp"
+            android:gravity="center"
+            android:text="00"
+            android:focusable="false"
+            android:clickable="false"
+            android:cursorVisible="false"
+            android:textAppearance="@style/TextAppearance.AppCompat.Large"
+            app:layout_constraintEnd_toEndOf="@+id/divider9"
+            app:layout_constraintTop_toBottomOf="@+id/divider9" />
+
+        <EditText
+            android:id="@+id/intensityRead"
+            android:layout_width="95dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:background="@null"
+            android:ems="10"
+            android:inputType="textPersonName"
+            android:text="@string/intensity"
+            android:textAlignment="viewStart"
+            android:focusable="false"
+            android:clickable="false"
+            android:cursorVisible="false"
+            app:layout_constraintStart_toStartOf="@+id/divider9"
+            app:layout_constraintTop_toBottomOf="@+id/divider9" />
+
+        <View
+            android:id="@+id/divider11"
+            android:layout_width="350dp"
+            android:layout_height="1dp"
+            android:layout_marginTop="80dp"
+            android:background="?android:attr/listDivider"
+            app:layout_constraintStart_toStartOf="@+id/divider10"
+            app:layout_constraintTop_toBottomOf="@+id/divider10" />
+
+        <EditText
+            android:id="@+id/frequencyRead"
+            android:layout_width="95dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:background="@null"
+            android:ems="10"
+            android:inputType="textPersonName"
+            android:text="@string/frequency"
+            android:textAlignment="viewStart"
+            android:focusable="false"
+            android:clickable="false"
+            android:cursorVisible="false"
+            app:layout_constraintStart_toStartOf="@+id/divider10"
+            app:layout_constraintTop_toBottomOf="@+id/divider10" />
+
+        <TextView
+            android:id="@+id/dutyCycleText"
+            android:layout_width="45dp"
+            android:layout_height="45dp"
+            android:layout_marginTop="20dp"
+            android:gravity="center"
+            android:text="00"
+            android:focusable="false"
+            android:clickable="false"
+            android:cursorVisible="false"
+            android:textAppearance="@style/TextAppearance.AppCompat.Large"
+            app:layout_constraintEnd_toEndOf="@+id/divider11"
+            app:layout_constraintTop_toBottomOf="@+id/divider11" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -3,4 +3,10 @@
     <string name="title_home">Home</string>
     <string name="title_dashboard">Dashboard</string>
     <string name="title_notifications">Notifications</string>
+
+
+    <string name="frequency"><b>Frequency</b></string>
+    <string name="duty"><b>Duty Cycle</b></string>
+    <string name="intensity"><b>Intensity</b></string>
+
 </resources>

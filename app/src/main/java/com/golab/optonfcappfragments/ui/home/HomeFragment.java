@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.text.Layout;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,6 +30,8 @@ import java.util.List;
 public class HomeFragment extends Fragment {
 
     private TextView mText;
+
+    private View mParameterLayout;
 
     private FragmentHomeBinding binding;
 
@@ -72,6 +75,7 @@ public class HomeFragment extends Fragment {
 
         if (text != null) {
             mText.setText(text.toString());
+            mParameterLayout.setVisibility(View.VISIBLE);
         } else {
             mText.setText("Tap NFC Tag");
         }
@@ -80,6 +84,8 @@ public class HomeFragment extends Fragment {
 
     private void initTextViews() {
         mText = mRoot.findViewById(R.id.readText);
+        mParameterLayout = mRoot.findViewById(R.id.parametersConstraint);
+        mParameterLayout.setVisibility(View.GONE);
     }
 
     @Override
