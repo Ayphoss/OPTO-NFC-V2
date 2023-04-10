@@ -39,31 +39,31 @@
 
     <EditText
         android:id="@+id/intensityNumberText"
-        android:layout_width="45dp"
+        android:layout_width="48dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:ems="10"
-        android:hint="00"
         android:gravity="center"
+        android:hint="00"
         android:inputType="number"
         app:layout_constraintEnd_toStartOf="@+id/intensityPlus"
         app:layout_constraintTop_toBottomOf="@+id/divider5" />
 
     <EditText
         android:id="@+id/frequencyNumberText"
-        android:layout_width="45dp"
+        android:layout_width="48dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:ems="10"
-        android:hint="00"
         android:gravity="center"
+        android:hint="00"
         android:inputType="number"
         app:layout_constraintEnd_toStartOf="@+id/freqPlus"
         app:layout_constraintTop_toBottomOf="@+id/divider2" />
 
     <EditText
         android:id="@+id/dutyCycleNumberText"
-        android:layout_width="45dp"
+        android:layout_width="48dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:ems="10"

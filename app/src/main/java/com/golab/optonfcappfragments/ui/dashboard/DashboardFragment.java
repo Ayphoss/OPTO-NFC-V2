@@ -39,6 +39,11 @@ public class DashboardFragment extends Fragment {
 
     private TextView mWriteText;
     private TextView mCountView;
+
+    private TextView mIntensity;
+    private TextView mFrequency;
+    private TextView mDutyCycle;
+
     private Button mWriteButton;
 
     private int mCounter;
@@ -67,7 +72,8 @@ public class DashboardFragment extends Fragment {
                 v.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
                 mCounter = 30;
                 ((MainActivity) getActivity()).setWriteMode(true);
-                ((MainActivity) getActivity()).setMessage(mWriteText.getText().toString());
+                ((MainActivity) getActivity()).setMessage(mIntensity.getText().toString() + mFrequency.getText().toString() + mDutyCycle.getText().toString());
+                ((MainActivity) getActivity()).setParameters(mIntensity.getText().toString(), mFrequency.getText().toString(), mDutyCycle.getText().toString());
                 mCountView.setText(String.valueOf(mCounter));
                 mCountView.setVisibility(View.VISIBLE);
                 mCDTimer = new CountDownTimer(30000, 1000){
@@ -102,6 +108,11 @@ public class DashboardFragment extends Fragment {
     private void initTextViews() {
         mWriteText = (TextView) mRoot.findViewById(R.id.writeText);
         mCountView = (TextView) mRoot.findViewById(R.id.countView);
+
+        mIntensity = (TextView) mRoot.findViewById(R.id.intensityNumberText);
+        mFrequency = (TextView) mRoot.findViewById(R.id.frequencyNumberText);
+        mDutyCycle = (TextView) mRoot.findViewById(R.id.dutyCycleNumberText);
+
         mCountView.setVisibility(View.GONE);
     }
 

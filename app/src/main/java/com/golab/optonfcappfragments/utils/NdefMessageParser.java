@@ -20,12 +20,12 @@ public class NdefMessageParser {
 
         // Here is where the payload is parsed and interpreted:
         for (final NdefRecord record : records) {
-            if (ChipRecord.isOCF(record)) {
+            if (ChipRecord.isIDF(record)) {
                 elements.add(ChipRecord.parse(record));
             } else {
                 elements.add(new ParsedNefRecord() {
-                    public String str() {
-                        return new String(record.getPayload());
+                    public byte[] payload() {
+                        return record.getPayload();
                     }
                 });
             }

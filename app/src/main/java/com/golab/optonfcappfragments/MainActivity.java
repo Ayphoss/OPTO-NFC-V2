@@ -62,7 +62,10 @@ public class MainActivity extends AppCompatActivity {
     private final byte WRITE_BYTE = 0;
 
     // TODO: Replace with proper format
-    private StringBuilder mReadString = null;
+    private String mReadString = null;
+    private String mIntensityString = null;
+    private String mFrequencyString = null;
+    private String mDutyCycleString = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -188,7 +191,6 @@ public class MainActivity extends AppCompatActivity {
         // Set the tag we're currently interacting with
         mTag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
 
-
         NdefMessage[] msgs;
 
         if (rawMsgs != null) {
@@ -204,11 +206,11 @@ public class MainActivity extends AppCompatActivity {
             byte[] id = intent.getByteArrayExtra(NfcAdapter.EXTRA_ID);
             Tag tag = (Tag) intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
 
+            // This payload is the ID, I change it later accidentally.
             byte[] payload = dumpTagData(tag).getBytes();
-            // TODO: DO we really want type unknown here?
+
             NdefRecord record = new NdefRecord(NdefRecord.TNF_UNKNOWN, empty, id, payload);
 
-            // TODO: find what the heck the curly brackets do here...
             NdefMessage msg = new NdefMessage(new NdefRecord[] {record});
             msgs = new NdefMessage[] {msg};
         }
@@ -316,17 +318,33 @@ public class MainActivity extends AppCompatActivity {
 
         for (int i = 0; i < size; i++) {
             ParsedNefRecord record = records.get(i);
-            String str = record.str();
-            sb.append(str).append("\n");
+
+            byte[] pyld = record.payload();
+
+            // For future if changed to read
+            if (pyld[0] == 0) {
+                String intensity = "" + pyld[1];
+                this.mIntensityString = intensity;
+
+                String freq = "" + pyld[2];
+                this.mFrequencyString = freq;
+
+                String duty = "" + pyld[3];
+                this.mDutyCycleString = duty;
+
+                this.mReadString = intensity + freq + duty;
+            }
         }
 
-        // TODO: Store tag data correctly
-        mReadString = sb;
     }
 
-    public StringBuilder getReadString() {
+    public String getReadString() {
         return this.mReadString;
     }
+
+    public String getIntensityString() { return this.mIntensityString; }
+    public String getFrequencyString() { return this.mFrequencyString; }
+    public String getDutyCycleString() { return this.mDutyCycleString; }
 
     /* - - - - - - - WRITE - - - - - - */
 
@@ -347,26 +365,23 @@ public class MainActivity extends AppCompatActivity {
         // TODO: Adjust for full payload package
         // Casting to string since TextView.getText() returns CharSequence
 
-        byte[] pyld = formatMessage(this.message);
+        // TODO: Adjust for each field
+        byte[] pyld = formatMessage();
 
         NdefRecord[] records = { createRecord(pyld) };
         return new NdefMessage(records);
     }
 
-    private byte[] formatMessage(String msg) throws UnsupportedEncodingException {
+    private byte[] formatMessage() throws UnsupportedEncodingException {
 
-        if (msg.length() == 6) {
-            byte[] out = new byte[4];
+        byte[] out = new byte[4];
 
-            out[0] = WRITE_BYTE;
-            out[1] = Byte.parseByte(msg.substring(0,2));
-            out[2] = Byte.parseByte(msg.substring(2,4));
-            out[3] = Byte.parseByte(msg.substring(4,6));
+        out[0] = WRITE_BYTE;
+        out[1] = Byte.parseByte(this.mIntensityString);
+        out[2] = Byte.parseByte(this.mFrequencyString);
+        out[3] = Byte.parseByte(this.mDutyCycleString);
 
-            return out;
-        } else {
-            throw new UnsupportedEncodingException();
-        }
+        return out;
     }
 
     private NdefRecord createRecord(byte[] pyld) throws UnsupportedEncodingException {
@@ -415,5 +430,11 @@ public class MainActivity extends AppCompatActivity {
 
     public void setMessage(String s) {
         this.message = s;
+    }
+
+    public void setParameters(String in, String fr, String dc) {
+        this.mIntensityString = in;
+        this.mFrequencyString = fr;
+        this.mDutyCycleString = dc;
     }
 }

@@ -30,6 +30,9 @@ import java.util.List;
 public class HomeFragment extends Fragment {
 
     private TextView mText;
+    private TextView mIntensity;
+    private TextView mFrequency;
+    private TextView mDutyCycle;
 
     private View mParameterLayout;
 
@@ -71,10 +74,19 @@ public class HomeFragment extends Fragment {
 
     private void initFragment() {
 
-        StringBuilder text = ((MainActivity) getActivity()).getReadString();
+        MainActivity mainActivity = (MainActivity) getActivity();
+
+        String text = mainActivity.getReadString();
+        String intensity = mainActivity.getIntensityString();
+        String frequency = mainActivity.getFrequencyString();
+        String dutyCycle = mainActivity.getDutyCycleString();
+
 
         if (text != null) {
-            mText.setText(text.toString());
+            mText.setText(text);
+            mFrequency.setText(frequency);
+            mIntensity.setText(intensity);
+            mDutyCycle.setText(dutyCycle);
             mParameterLayout.setVisibility(View.VISIBLE);
         } else {
             mText.setText("Tap NFC Tag");
@@ -84,6 +96,10 @@ public class HomeFragment extends Fragment {
 
     private void initTextViews() {
         mText = mRoot.findViewById(R.id.readText);
+        mFrequency = mRoot.findViewById(R.id.frequencyText);
+        mIntensity = mRoot.findViewById(R.id.intensityText);
+        mDutyCycle = mRoot.findViewById(R.id.dutyCycleText);
+
         mParameterLayout = mRoot.findViewById(R.id.parametersConstraint);
         mParameterLayout.setVisibility(View.GONE);
     }
