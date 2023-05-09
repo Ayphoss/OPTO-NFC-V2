@@ -40,7 +40,6 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-
 public class MainActivity extends AppCompatActivity {
 
     private ActivityMainBinding binding;
@@ -396,6 +395,9 @@ public class MainActivity extends AppCompatActivity {
 //
 //        System.arraycopy(langBytes, 0, payload, 1, langLength);
 //        System.arraycopy(pyldBytes, 0, payload, 1 + langLength, textLength);
+
+
+
 
         NdefRecord record = NdefRecord.createMime("text/plain", pyld);
 
