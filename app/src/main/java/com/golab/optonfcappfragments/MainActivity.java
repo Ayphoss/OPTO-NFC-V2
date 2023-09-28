@@ -15,6 +15,7 @@ import android.nfc.tech.MifareClassic;
 import android.nfc.tech.MifareUltralight;
 import android.nfc.tech.Ndef;
 import android.nfc.tech.NdefFormatable;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.util.Log;
@@ -24,7 +25,6 @@ import com.golab.optonfcappfragments.utils.NdefMessageParser;
 import com.golab.optonfcappfragments.utils.NfcBroadcastReceiver;
 import com.golab.optonfcappfragments.utils.NfcBroadcasts;
 import com.golab.optonfcappfragments.utils.ParsedNefRecord;
-import com.golab.optonfcappfragments.utils.Utils;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -34,11 +34,18 @@ import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
 import com.golab.optonfcappfragments.databinding.ActivityMainBinding;
+import com.st.st25android.AndroidReaderInterface;
+import com.st.st25sdk.Helper;
+import com.st.st25sdk.STException;
+import com.st.st25sdk.ndef.MimeRecord;
+import com.st.st25sdk.ndef.NDEFMsg;
+import com.st.st25sdk.type5.Type5Tag;
+import com.st.st25sdk.type5.st25dv.ST25DVTag;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -52,6 +59,10 @@ public class MainActivity extends AppCompatActivity {
     private NfcBroadcastReceiver mBroadcastReceiver;
 
     private Tag mTag;
+    private ST25DVTag mST25DVTag;
+    private Type5Tag mType5Tag;
+
+    private byte[] mPyld;
 
     private Fragment mDashboardFragment;
     private Fragment mHomeFragment;
@@ -65,6 +76,16 @@ public class MainActivity extends AppCompatActivity {
     private String mIntensityString = null;
     private String mFrequencyString = null;
     private String mDutyCycleString = null;
+
+    enum Action {
+        READ_ACTION
+    };
+
+    enum ActionStatus {
+        UNKNOWN_FAILURE,
+        READ_FAILED,
+        READ_SUCCEEDED;
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,7 +111,6 @@ public class MainActivity extends AppCompatActivity {
         mIsWriteMode = false;
 
         mBroadcastReceiver = new NfcBroadcastReceiver();
-
 
         initNfcAdapter();
     }
@@ -190,6 +210,18 @@ public class MainActivity extends AppCompatActivity {
         // Set the tag we're currently interacting with
         mTag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
 
+        AndroidReaderInterface readerInterface = AndroidReaderInterface.newInstance(mTag);
+
+        byte[] uid = Helper.reverseByteArray(mTag.getId());
+
+        // Converts a Android tag to at ST25DVTag
+        if (mTag != null) {
+            mType5Tag = new Type5Tag(readerInterface, uid);
+        } else {
+            Toast.makeText(this, "Error Reading NFC Tag", Toast.LENGTH_LONG).show();
+            return;
+        }
+
         NdefMessage[] msgs;
 
         if (rawMsgs != null) {
@@ -201,140 +233,34 @@ public class MainActivity extends AppCompatActivity {
 
         } else {
 
-            byte[] empty = new byte[0];
-            byte[] id = intent.getByteArrayExtra(NfcAdapter.EXTRA_ID);
-            Tag tag = (Tag) intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
 
-            // This payload is the ID, I change it later accidentally.
-            byte[] payload = dumpTagData(tag).getBytes();
-
-            NdefRecord record = new NdefRecord(NdefRecord.TNF_UNKNOWN, empty, id, payload);
-
-            NdefMessage msg = new NdefMessage(new NdefRecord[] {record});
-            msgs = new NdefMessage[] {msg};
-        }
-
-        displayMsgs(msgs);
-    }
-
-    private String dumpTagData(Tag tag) {
-        StringBuilder sb = new StringBuilder();
-        byte[] id = tag.getId();
-        sb.append("ID (hex): \n");
-        sb.append(toHex(id)).append('\n');
-
-        String prefix = "android.nfc.tech.";
-        sb.append("Technologies: ");
-        for (String tech : tag.getTechList()) {
-            sb.append(tech.substring(prefix.length()));
-            sb.append(", ");
-        }
-
-        sb.delete(sb.length() - 2, sb.length());
-
-        for (String tech : tag.getTechList()) {
-            if (tech.equals(MifareClassic.class)) {
-                sb.append("\n");
-                String type = "Unkown";
-
-                try {
-                    MifareClassic mifareTag = MifareClassic.get(tag);
-
-                    switch(mifareTag.getType()) {
-                        case MifareClassic.TYPE_CLASSIC:
-                            type = "Classic";
-                            break;
-                        case MifareClassic.TYPE_PLUS:
-                            type = "Plus";
-                        case MifareClassic.TYPE_PRO:
-                            type = "Pro";
-                            break;
-                    }
-
-                    // TODO: Check if this is nessisary for the final version of the app.
-                    sb.append("Mifare Classic Type: ");
-                    sb.append(type);
-                    sb.append("\n");
-
-                    sb.append("Mifare size: ");
-                    sb.append(mifareTag.getSize());
-                    sb.append("\n");
-
-                    sb.append("Mifare sectors: ");
-                    sb.append(mifareTag.getSectorCount());
-                    sb.append('\n');
-
-                    sb.append("Mifare blocks: ");
-                    sb.append(mifareTag.getBlockCount());
-                } catch (Exception e) {
-                    sb.append("Mifare classic error: " + e.getMessage());
-                }
-            }
-
-            if (tech.equals(MifareUltralight.class.getName())) {
-                sb.append('\n');
-                MifareUltralight mifareUlTag = MifareUltralight.get(tag);
-                String type = "Unknown";
-                switch (mifareUlTag.getType()) {
-                    case MifareUltralight.TYPE_ULTRALIGHT:
-                        type = "Ultralight";
-                        break;
-                    case MifareUltralight.TYPE_ULTRALIGHT_C:
-                        type = "UltraLight C";
-                        break;
-                }
-
-                sb.append("Mifare Ultralight Type: ");
-                sb.append(type);
-            }
-
-
-            if (tech.equals(IsoDep.class.getName())) {
-                IsoDep isoDepTag = IsoDep.get(tag);
-            }
-
-            if (tech.equals(Ndef.class.getName())) {
-                Ndef.get(tag);
-            }
-
-            if (tech.equals(NdefFormatable.class.getName())) {
-                NdefFormatable ndefFormatableTag = NdefFormatable.get(tag);
-            }
+            new AsyncTaskHandler(Action.READ_ACTION, readerInterface, uid).execute();
 
         }
 
-        return sb.toString();
+        displayMsgs();
     }
 
 
-    private void displayMsgs(NdefMessage[] msgs) {
-        if (msgs == null || msgs.length == 0) { return; }
+    private void displayMsgs() {
 
-        // Meant to build a string from the read NdefMessage
-        StringBuilder sb = new StringBuilder();
-        List<ParsedNefRecord> records = NdefMessageParser.parse(msgs[0]);
-        final int size = records.size();
+        // Meant to spin to wait for AsyncTask to finish
+//        while (mPyld == null) { }
 
-        for (int i = 0; i < size; i++) {
-            ParsedNefRecord record = records.get(i);
-
-            byte[] pyld = record.payload();
-
-            // For future if changed to read
-            if (pyld[0] == 0) {
-                String intensity = "" + pyld[1];
+        if (mPyld != null) {
+            if (mPyld[0] == 0) {
+                String intensity = "" + mPyld[1];
                 this.mIntensityString = intensity;
 
-                String freq = "" + pyld[2];
+                String freq = "" + mPyld[2];
                 this.mFrequencyString = freq;
 
-                String duty = "" + pyld[3];
+                String duty = "" + mPyld[3];
                 this.mDutyCycleString = duty;
 
                 this.mReadString = intensity + freq + duty;
             }
         }
-
     }
 
     public String getReadString() {
@@ -350,13 +276,30 @@ public class MainActivity extends AppCompatActivity {
     public void handleWriteIntent(Intent intent) {
         mTag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
 
+        AndroidReaderInterface readerInterface = AndroidReaderInterface.newInstance(mTag);
+        byte[] uid = Helper.reverseByteArray(mTag.getId());
+
+
         try {
+            if (mType5Tag != null) {
+                writeTag(mType5Tag, packageSTMessage());
+            }
             writeTag(mTag, packageMessage());
         } catch (IOException e) {
             e.printStackTrace();
         } catch (FormatException e) {
             e.printStackTrace();
         }
+    }
+
+    private NDEFMsg packageSTMessage() throws UnsupportedEncodingException {
+
+        NDEFMsg ndefMsg = new NDEFMsg();
+
+        byte[] pyld = formatMessage();
+        ndefMsg.addRecord(createSTRecord(pyld));
+
+        return ndefMsg;
     }
 
     private NdefMessage packageMessage() throws UnsupportedEncodingException {
@@ -396,14 +339,44 @@ public class MainActivity extends AppCompatActivity {
 //        System.arraycopy(langBytes, 0, payload, 1, langLength);
 //        System.arraycopy(pyldBytes, 0, payload, 1 + langLength, textLength);
 
-
-
-
         NdefRecord record = NdefRecord.createMime("text/plain", pyld);
 
         return record;
     }
 
+    private MimeRecord createSTRecord(byte[] pyld) {
+
+        MimeRecord record = new MimeRecord();
+        record.setContent(pyld);
+
+        return record;
+    }
+
+    // TODO: Update to format CC. Update to write ST25DV NDEF message.
+
+    public void writeTag(Type5Tag tag, NDEFMsg message) {
+        if (tag != null) {
+            try {
+                if (!tag.isCCFileValid()) {
+                    tag.initEmptyCCFile();
+                }
+                tag.writeNdefMessage(message);
+            } catch (STException e) {
+                e.printStackTrace();
+            }
+        }
+
+    }
+
+    /**
+     *
+     * Write to the NFC tag in proximity, format the tag if it is new.
+     *
+     * @param tag an NDEF compatible tag, NdefMessage - A NDEF formatted buffer
+     *
+     * @return null
+     *
+     */
     public void writeTag(Tag tag, NdefMessage message) throws FormatException {
         if (tag != null) {
             try {
@@ -438,5 +411,48 @@ public class MainActivity extends AppCompatActivity {
         this.mIntensityString = in;
         this.mFrequencyString = fr;
         this.mDutyCycleString = dc;
+    }
+
+    /* Async task is created to handle read/write requests to untangle them from the UI thread
+     * to ensure that the read/write doesn't cause the UI to freeze
+     */
+    private class AsyncTaskHandler extends AsyncTask<Void, Void, ActionStatus> {
+        Action mAction;
+        byte[] mUid;
+        AndroidReaderInterface mReaderInterface;
+
+
+        public AsyncTaskHandler(Action action, AndroidReaderInterface readerInterface, byte[] uid) {
+            mAction = action;
+            mUid = uid;
+            mReaderInterface = readerInterface;
+        }
+
+        @Override
+        protected ActionStatus doInBackground(Void... voids) {
+            ActionStatus result = ActionStatus.UNKNOWN_FAILURE;;
+
+            switch (mAction) {
+                case READ_ACTION:
+                    try {
+                        //Read 1 block (8 bytes) since it holds the whole data struct
+                        mPyld = mType5Tag.readMultipleBlock(0, 1);
+                        result = ActionStatus.READ_SUCCEEDED;
+                    } catch (STException e) {
+                        e.printStackTrace();
+                        result = ActionStatus.READ_FAILED;
+                    }
+                    break;
+            }
+
+
+            return result;
+        }
+
+        protected void onPostExecute(Long result) {
+
+        }
+
+
     }
 }
