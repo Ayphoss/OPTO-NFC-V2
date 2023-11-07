@@ -10,25 +10,27 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.golab.optonfcappfragments.MainActivity;
 import com.golab.optonfcappfragments.R;
 import com.golab.optonfcappfragments.databinding.FragmentHomeBinding;
-import com.golab.optonfcappfragments.utils.NdefMessageParser;
 import com.golab.optonfcappfragments.utils.NfcBroadcasts;
-import com.golab.optonfcappfragments.utils.ParsedNefRecord;
-
-import java.util.List;
 
 public class HomeFragment extends Fragment {
 
+    private MainActivity mMainActivity;
+    private TextView mUid;
+    private TextView mUidHeader;
     private TextView mText;
+    private TextView mIntensity;
+    private TextView mFrequency;
+    private TextView mDutyCycle;
+
+    private View mParameterLayout;
 
     private FragmentHomeBinding binding;
 
@@ -45,8 +47,12 @@ public class HomeFragment extends Fragment {
 
         initTextViews();
 
+        mMainActivity = (MainActivity) getActivity();
+
         initFragment();
 
+
+        IntentFilter filter = new IntentFilter(NfcBroadcasts.NFC_TAG_READ);
 
         BroadcastReceiver mReceiver = new BroadcastReceiver() {
             @Override
@@ -57,21 +63,31 @@ public class HomeFragment extends Fragment {
             }
         };
 
-        IntentFilter filter = new IntentFilter(NfcBroadcasts.NFC_TAG_READ);
-
         requireActivity().registerReceiver(mReceiver, filter);
 
 
 //        homeViewModel.getText().observe(getViewLifecycleOwner(), mText::setText);
+
         return mRoot;
     }
 
     private void initFragment() {
 
-        StringBuilder text = ((MainActivity) getActivity()).getReadString();
+        String text = mMainActivity.getUidString();
+        String intensity = mMainActivity.getIntensityString();
+        String frequency = mMainActivity.getFrequencyString();
+        String dutyCycle = mMainActivity.getDutyCycleString();
+
 
         if (text != null) {
-            mText.setText(text.toString());
+            mText.setVisibility(View.GONE);
+            mUid.setText(text);
+            mUid.setVisibility(View.VISIBLE);
+            mUidHeader.setVisibility(View.VISIBLE);
+            mFrequency.setText(frequency);
+            mIntensity.setText(intensity);
+            mDutyCycle.setText(dutyCycle);
+            mParameterLayout.setVisibility(View.VISIBLE);
         } else {
             mText.setText("Tap NFC Tag");
         }
@@ -80,6 +96,17 @@ public class HomeFragment extends Fragment {
 
     private void initTextViews() {
         mText = mRoot.findViewById(R.id.readText);
+        mUid = mRoot.findViewById(R.id.uidValue);
+        mUidHeader = mRoot.findViewById(R.id.uid);
+        mFrequency = mRoot.findViewById(R.id.frequencyText);
+        mIntensity = mRoot.findViewById(R.id.intensityText);
+        mDutyCycle = mRoot.findViewById(R.id.dutyCycleText);
+
+        mParameterLayout = mRoot.findViewById(R.id.parametersConstraint);
+
+        mUid.setVisibility(View.GONE);
+        mUidHeader.setVisibility(View.GONE);
+        mParameterLayout.setVisibility(View.GONE);
     }
 
     @Override
