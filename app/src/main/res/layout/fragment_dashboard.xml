@@ -6,33 +6,22 @@
     android:layout_height="match_parent"
     tools:context=".ui.dashboard.DashboardFragment">
 
-    <EditText
-        android:id="@+id/writeText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="180dp"
-        android:ems="10"
-        android:hint="Data"
-        android:inputType="number"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/divider" />
-
     <Button
         android:id="@+id/writeButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="140dp"
         android:text="Write"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/writeText" />
+        app:layout_constraintTop_toBottomOf="@+id/divider" />
 
     <TextView
         android:id="@+id/countView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="30dp"
         android:text="TextView"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/writeButton" />
@@ -46,6 +35,7 @@
         android:gravity="center"
         android:hint="00"
         android:inputType="number"
+        android:maxLength="3"
         app:layout_constraintEnd_toStartOf="@+id/intensityPlus"
         app:layout_constraintTop_toBottomOf="@+id/divider5" />
 
@@ -58,6 +48,7 @@
         android:gravity="center"
         android:hint="00"
         android:inputType="number"
+        android:maxLength="3"
         app:layout_constraintEnd_toStartOf="@+id/freqPlus"
         app:layout_constraintTop_toBottomOf="@+id/divider2" />
 
@@ -70,6 +61,7 @@
         android:gravity="center"
         android:hint="00"
         android:inputType="number"
+        android:maxLength="3"
         app:layout_constraintEnd_toStartOf="@+id/dutyPlus"
         app:layout_constraintTop_toBottomOf="@+id/divider3" />
 
@@ -158,6 +150,22 @@
         android:textAlignment="viewStart"
         app:layout_constraintStart_toStartOf="@+id/divider5"
         app:layout_constraintTop_toBottomOf="@+id/divider5" />
+
+    <EditText
+        android:id="@+id/adrText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@null"
+        android:clickable="false"
+        android:cursorVisible="false"
+        android:ems="10"
+        android:focusable="false"
+        android:inputType="textPersonName"
+        android:text="Memory Address"
+        android:textAlignment="viewStart"
+        app:layout_constraintBottom_toTopOf="@+id/writeButton"
+        app:layout_constraintStart_toStartOf="@+id/divider5"
+        app:layout_constraintTop_toBottomOf="@+id/divider" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline2"
@@ -257,16 +265,17 @@
         app:layout_constraintTop_toBottomOf="@+id/divider3" />
 
     <EditText
-        android:id="@+id/address"
-        android:layout_width="wrap_content"
+        android:id="@+id/writeAddress"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:ems="10"
-        android:hint="Memory Address"
+        android:gravity="center"
+        android:hint="0000"
         android:inputType="number"
-        android:minHeight="48dp"
-        app:layout_constraintBottom_toTopOf="@+id/writeText"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/writeButton"
+        app:layout_constraintEnd_toEndOf="@+id/dutyPlus"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toEndOf="@+id/adrText"
         app:layout_constraintTop_toBottomOf="@+id/divider" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

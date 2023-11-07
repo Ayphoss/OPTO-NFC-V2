@@ -1,30 +1,16 @@
 package com.golab.optonfcappfragments;
 
-import static com.golab.optonfcappfragments.utils.Utils.toHex;
-
-import android.app.Fragment;
 import android.app.PendingIntent;
 import android.content.Intent;
-import android.nfc.FormatException;
-import android.nfc.NdefMessage;
-import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
-import android.nfc.tech.IsoDep;
-import android.nfc.tech.MifareClassic;
-import android.nfc.tech.MifareUltralight;
-import android.nfc.tech.Ndef;
-import android.nfc.tech.NdefFormatable;
-import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Parcelable;
 import android.util.Log;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import com.golab.optonfcappfragments.utils.NdefMessageParser;
-import com.golab.optonfcappfragments.utils.NfcBroadcastReceiver;
 import com.golab.optonfcappfragments.utils.NfcBroadcasts;
-import com.golab.optonfcappfragments.utils.ParsedNefRecord;
+import com.golab.optonfcappfragments.utils.TagDiscovery;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -34,49 +20,49 @@ import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
 import com.golab.optonfcappfragments.databinding.ActivityMainBinding;
-import com.st.st25android.AndroidReaderInterface;
-import com.st.st25sdk.Helper;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
+
+import com.st.st25sdk.NFCTag;
 import com.st.st25sdk.STException;
-import com.st.st25sdk.ndef.MimeRecord;
-import com.st.st25sdk.ndef.NDEFMsg;
-import com.st.st25sdk.type5.Type5Tag;
-import com.st.st25sdk.type5.st25dv.ST25DVTag;
+import com.st.st25sdk.TagHelper;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements TagDiscovery.onTagDiscoveryCompletedListener {
 
+    public static final int CCFILE_SIZE = 8;
     private ActivityMainBinding binding;
 
+    ListeningExecutorService executor = MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor());
     private PendingIntent mPendingIntent;
 
     private NfcAdapter mNfcAdapter;
     private boolean mIsWriteMode;
 
-    private NfcBroadcastReceiver mBroadcastReceiver;
-
     private Tag mTag;
-    private ST25DVTag mST25DVTag;
-    private Type5Tag mType5Tag;
+    private NFCTag mNFCTag;
 
     private byte[] mPyld;
-
-    private Fragment mDashboardFragment;
-    private Fragment mHomeFragment;
+    private byte[] mUid;
 
     private String message;
 
     private final byte WRITE_BYTE = 0;
 
-    // TODO: Replace with proper format
-    private String mReadString = null;
+    private String mUidString = null;
     private String mIntensityString = null;
     private String mFrequencyString = null;
     private String mDutyCycleString = null;
 
+    /* Intended to be parameters for read/write success/failure feedback, but effectively replaced
+     * by STException.
+    */
     enum Action {
         READ_ACTION
     };
@@ -91,16 +77,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mHomeFragment = getFragmentManager().findFragmentByTag("HomeFragment");
-        mDashboardFragment = getFragmentManager().findFragmentByTag("DashboardFragment");
-
-
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
         BottomNavigationView navView = findViewById(R.id.nav_view);
-        // Passing each menu ID as a set of Ids because each
-        // menu should be considered as top level destinations.
         AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
                 R.id.navigation_home, R.id.navigation_dashboard, R.id.navigation_notifications)
                 .build();
@@ -110,8 +90,6 @@ public class MainActivity extends AppCompatActivity {
 
         mIsWriteMode = false;
 
-        mBroadcastReceiver = new NfcBroadcastReceiver();
-
         initNfcAdapter();
     }
 
@@ -119,7 +97,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
-        // TODO: Verify that this should be in onResume
         mPendingIntent = PendingIntent.getActivity(this, 0,
                 new Intent(this, this.getClass())
                         .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_MUTABLE);
@@ -131,7 +108,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
 
-        // May be the wrong place if write stops working
         disableForegroundDispatch();
         if(mNfcAdapter != null) {
             mNfcAdapter.disableReaderMode(this);
@@ -147,32 +123,25 @@ public class MainActivity extends AppCompatActivity {
                 || NfcAdapter.ACTION_TECH_DISCOVERED.equals(action)
                 || NfcAdapter.ACTION_NDEF_DISCOVERED.equals(action)) {
 
-            // Get the tag
+            // Initialize the global variable with the read tag.
             mTag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
 
-            if (mIsWriteMode) {
-                handleWriteIntent(intent);
-            } else {
-                handleReadIntent(intent);
-                sendBroadcast(new Intent(NfcBroadcasts.NFC_TAG_READ));
-//                sendBroadcast(new Intent().addCategory(Intent.CATEGORY_DEFAULT).setAction(NfcBroadcasts.NFC_TAG_READ));
+            if (mTag != null) {
+                new TagDiscovery(this).discoverTag(mTag);
             }
         }
     }
 
+    /**
+     * Function designed to overwrite the functionality of pressing the back button to exit
+     * write mode.
+     *
+     */
     @Override
     public void onBackPressed() {
         if (mIsWriteMode) {
             sendBroadcast(new Intent(NfcBroadcasts.NFC_STOP_WRITE));
         }
-    }
-
-    public void enableWriteMode() {
-        this.mIsWriteMode = true;
-    }
-
-    public void disableWriteMode() {
-        this.mIsWriteMode = false;
     }
 
     private void initNfcAdapter() {
@@ -201,70 +170,79 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+    public void toastParamIssue(String toast) {
+        Toast.makeText(this, toast, Toast.LENGTH_LONG).show();
+    }
+
     /* - - - - - - - READ - - - - - - */
 
-    public void handleReadIntent(Intent intent) {
-
-        Parcelable[] rawMsgs = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES);
-
-        // Set the tag we're currently interacting with
-        mTag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
-
-        AndroidReaderInterface readerInterface = AndroidReaderInterface.newInstance(mTag);
-
-        byte[] uid = Helper.reverseByteArray(mTag.getId());
-
-        // Converts a Android tag to at ST25DVTag
-        if (mTag != null) {
-            mType5Tag = new Type5Tag(readerInterface, uid);
-        } else {
-            Toast.makeText(this, "Error Reading NFC Tag", Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        NdefMessage[] msgs;
-
-        if (rawMsgs != null) {
-            msgs = new NdefMessage[rawMsgs.length];
-
-            for (int i = 0; i < rawMsgs.length; i++) {
-                msgs[i] = (NdefMessage) rawMsgs[i];
+    /**
+     * Function to manage the discovery, reading, and displaying of a new NFC tag.
+     *
+     * IMPORTANT: This function will fail if called from the UI Thread.
+     *
+     * @param tag - A newly discovered NFC tag
+     */
+    public void handleReadIntent(NFCTag tag) {
+        Callable<Void> read = (() -> {
+            try {
+                int adr = Integer.parseInt(((TextView) findViewById(R.id.readAddress)).getText().toString());
+                // Bytes 0-7 Hold the CC file data
+                mPyld = tag.readBytes(adr + CCFILE_SIZE, 4);
+                mUid = tag.getUid();
+//                    result = ActionStatus.READ_SUCCEEDED;
+            } catch (STException e) {
+                e.printStackTrace();
+//                    result = ActionStatus.READ_FAILED;
             }
+            return null;
+        });
 
-        } else {
+        ListenableFuture<Void> future = executor.submit(read);
 
+        future.addListener(() -> {
+            displayMsgs();
+            sendBroadcast(new Intent(NfcBroadcasts.NFC_TAG_READ));
+        }, getApplicationContext().getMainExecutor());
 
-            new AsyncTaskHandler(Action.READ_ACTION, readerInterface, uid).execute();
-
+        try {
+            future.get();
+        } catch (InterruptedException | ExecutionException ex) {
+            //pass
         }
 
-        displayMsgs();
     }
 
-
+    /**
+     * Functions to transfer the NFC parameters from the payload to the app for display.
+     *
+     * NOTE: If adding more parameters this is the function to modify.
+     */
     private void displayMsgs() {
-
-        // Meant to spin to wait for AsyncTask to finish
-//        while (mPyld == null) { }
-
         if (mPyld != null) {
-            if (mPyld[0] == 0) {
-                String intensity = "" + mPyld[1];
-                this.mIntensityString = intensity;
+            if (mPyld[0] == WRITE_BYTE) {
+                this.mIntensityString = "" + mPyld[0];
 
-                String freq = "" + mPyld[2];
-                this.mFrequencyString = freq;
+                this.mFrequencyString = "" + mPyld[2];
 
-                String duty = "" + mPyld[3];
-                this.mDutyCycleString = duty;
+                this.mDutyCycleString = "" + mPyld[3];
 
-                this.mReadString = intensity + freq + duty;
+                this.mUidString = "";
+
+                // Uid of the NFC Chip
+                for (byte b : mUid) {
+                    this.mUidString += b;
+                    this.mUidString += " ";
+                }
             }
+        } else {
+            Toast.makeText(this, "Invalid IDF", Toast.LENGTH_LONG).show();
         }
     }
 
-    public String getReadString() {
-        return this.mReadString;
+    public String getUidString() {
+        return this.mUidString;
     }
 
     public String getIntensityString() { return this.mIntensityString; }
@@ -273,51 +251,86 @@ public class MainActivity extends AppCompatActivity {
 
     /* - - - - - - - WRITE - - - - - - */
 
-    public void handleWriteIntent(Intent intent) {
-        mTag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
-
-        AndroidReaderInterface readerInterface = AndroidReaderInterface.newInstance(mTag);
-        byte[] uid = Helper.reverseByteArray(mTag.getId());
-
-
+    /**
+     * Function to manage the packaging and writing of app data to the NFC chip.
+     *
+     * @param tag - The ST NFCTag to be written to.
+     */
+    public void handleWriteIntent(NFCTag tag) {
         try {
-            if (mType5Tag != null) {
-                writeTag(mType5Tag, packageSTMessage());
+            if (tag != null) {
+                writeTag(tag, formatMessage());
             }
-            writeTag(mTag, packageMessage());
         } catch (IOException e) {
-            e.printStackTrace();
-        } catch (FormatException e) {
+            Toast.makeText(this, "Error in tag discovery!", Toast.LENGTH_LONG).show();
             e.printStackTrace();
         }
     }
 
-    private NDEFMsg packageSTMessage() throws UnsupportedEncodingException {
+    /**
+     * Function to write toa ST NFCTag at the specified user address.
+     *
+     * IMPORTANT: This function will fail if called by the UI Thread.
+     *
+     * @param tag - The ST NFCTag to be written to.
+     * @param pyld - The data to be written to the tag.
+     */
+    public void writeTag(NFCTag tag, byte[] pyld) {
+        if (tag != null) {
+            Callable<Void> write = (() -> {
+                try {
+                    if (tag.getCCWriteAccess() == 0) {
+                        try {
+                            // Blocks 0-7 are occupied by the CCFile.
+                            tag.writeBytes((Integer.parseInt(((TextView) findViewById(R.id.writeAddress)).getText().toString()) + CCFILE_SIZE), pyld);
+//                    result = ActionStatus.READ_SUCCEEDED;
+                        } catch (STException e) {
+                            e.printStackTrace();
+//                    result = ActionStatus.READ_FAILED;
+                        }
+                    } else {
+                        Toast.makeText(this, "Write mode not enabled!", Toast.LENGTH_LONG).show();
+                    }
+                } catch (STException e) {
+                    e.printStackTrace();
+                    if (e.equals(STException.STExceptionCode.TAG_NOT_IN_THE_FIELD)) {
+                        Toast.makeText(this, "Tag not in range!", Toast.LENGTH_LONG).show();
+                    }
+                }
+                return null;
+            });
 
-        NDEFMsg ndefMsg = new NDEFMsg();
+            ListenableFuture<Void> future = executor.submit(write);
 
-        byte[] pyld = formatMessage();
-        ndefMsg.addRecord(createSTRecord(pyld));
+            future.addListener(() -> {
+                /* Sends intent broadcast to inform the DashboardFragment that the write is complete
+                 * exit write mode.
+                 */
+                sendBroadcast(new Intent(NfcBroadcasts.NFC_STOP_WRITE));
+            }, executor);
 
-        return ndefMsg;
+            try {
+                future.get();
+            } catch (InterruptedException | ExecutionException ex) {
+                //pass
+            }
+
+        }
+
     }
 
-    private NdefMessage packageMessage() throws UnsupportedEncodingException {
-
-        // TODO: Adjust for full payload package
-        // Casting to string since TextView.getText() returns CharSequence
-
-        // TODO: Adjust for each field
-        byte[] pyld = formatMessage();
-
-        NdefRecord[] records = { createRecord(pyld) };
-        return new NdefMessage(records);
-    }
-
+    /**
+     * Takes the data inputted on the DashboardFragment and packages it into a byte array to be
+     * sent to an NFC tag.
+     *
+     * @return out - A byte[] containing the payload to be written to the NFC tag.
+     * @throws UnsupportedEncodingException
+     */
     private byte[] formatMessage() throws UnsupportedEncodingException {
 
-        byte[] out = new byte[4];
+        byte[] out = new byte[8];
 
+        // byte[0] = 0 to ensure that the IF
         out[0] = WRITE_BYTE;
         out[1] = Byte.parseByte(this.mIntensityString);
         out[2] = Byte.parseByte(this.mFrequencyString);
@@ -326,76 +339,34 @@ public class MainActivity extends AppCompatActivity {
         return out;
     }
 
-    private NdefRecord createRecord(byte[] pyld) throws UnsupportedEncodingException {
-//        String  lang        =   "en";
-//        byte[]  pyldBytes   =   pyld;
-//        byte[]  langBytes   =   lang.getBytes();
-//        int     langLength  =   langBytes.length;
-//        int     textLength  =   pyldBytes.length;
-//        byte[]  payload     =   new byte[1 + langLength + textLength];
-//
-//        payload[0] = (byte) langLength;
-//
-//        System.arraycopy(langBytes, 0, payload, 1, langLength);
-//        System.arraycopy(pyldBytes, 0, payload, 1 + langLength, textLength);
+    /**
+     * Overwritten function that executes onSuccess of TagDiscovery.discoverTag(). Chooses if the
+     * tag should be written to or read from.
+     *
+     * @param nfcTag - The ST NFCTag to be written to.
+     * @param productId - The ST tag type being written to.
+     * @param error - Error thrown during execution or null.
+     */
+    @Override
+    public void onTagDiscoveryCompleted(NFCTag nfcTag, TagHelper.ProductID productId, STException error) {
 
-        NdefRecord record = NdefRecord.createMime("text/plain", pyld);
-
-        return record;
-    }
-
-    private MimeRecord createSTRecord(byte[] pyld) {
-
-        MimeRecord record = new MimeRecord();
-        record.setContent(pyld);
-
-        return record;
-    }
-
-    // TODO: Update to format CC. Update to write ST25DV NDEF message.
-
-    public void writeTag(Type5Tag tag, NDEFMsg message) {
-        if (tag != null) {
-            try {
-                if (!tag.isCCFileValid()) {
-                    tag.initEmptyCCFile();
-                }
-                tag.writeNdefMessage(message);
-            } catch (STException e) {
-                e.printStackTrace();
-            }
+        if (error != null) {
+            // Error with toasts since this function is not called from the UI Thread.
+//            Toast.makeText(getApplication(), "Error while reading the tag: " + error.toString(), Toast.LENGTH_LONG).show();
+            return;
         }
 
-    }
+        if (nfcTag != null) {
+            mNFCTag = nfcTag;
 
-    /**
-     *
-     * Write to the NFC tag in proximity, format the tag if it is new.
-     *
-     * @param tag an NDEF compatible tag, NdefMessage - A NDEF formatted buffer
-     *
-     * @return null
-     *
-     */
-    public void writeTag(Tag tag, NdefMessage message) throws FormatException {
-        if (tag != null) {
-            try {
-                Ndef ndefTag = Ndef.get(tag);
-                if (ndefTag == null) {
-                    NdefFormatable nForm = NdefFormatable.get(tag);
-                    if (nForm != null) {
-                        nForm.connect();
-                        nForm.format(message);
-                        nForm.close();
-                    }
-                } else {
-                    ndefTag.connect();
-                    ndefTag.writeNdefMessage(message);
-                    ndefTag.close();
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
+            if (mIsWriteMode) {
+                handleWriteIntent(mNFCTag);
+            } else {
+                handleReadIntent(mNFCTag);
             }
+
+        } else {
+//            Toast.makeText(this, "Tag discovery failed!", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -411,48 +382,5 @@ public class MainActivity extends AppCompatActivity {
         this.mIntensityString = in;
         this.mFrequencyString = fr;
         this.mDutyCycleString = dc;
-    }
-
-    /* Async task is created to handle read/write requests to untangle them from the UI thread
-     * to ensure that the read/write doesn't cause the UI to freeze
-     */
-    private class AsyncTaskHandler extends AsyncTask<Void, Void, ActionStatus> {
-        Action mAction;
-        byte[] mUid;
-        AndroidReaderInterface mReaderInterface;
-
-
-        public AsyncTaskHandler(Action action, AndroidReaderInterface readerInterface, byte[] uid) {
-            mAction = action;
-            mUid = uid;
-            mReaderInterface = readerInterface;
-        }
-
-        @Override
-        protected ActionStatus doInBackground(Void... voids) {
-            ActionStatus result = ActionStatus.UNKNOWN_FAILURE;;
-
-            switch (mAction) {
-                case READ_ACTION:
-                    try {
-                        //Read 1 block (8 bytes) since it holds the whole data struct
-                        mPyld = mType5Tag.readMultipleBlock(0, 1);
-                        result = ActionStatus.READ_SUCCEEDED;
-                    } catch (STException e) {
-                        e.printStackTrace();
-                        result = ActionStatus.READ_FAILED;
-                    }
-                    break;
-            }
-
-
-            return result;
-        }
-
-        protected void onPostExecute(Long result) {
-
-        }
-
-
     }
 }
